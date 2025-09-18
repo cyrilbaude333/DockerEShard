@@ -50,6 +50,7 @@ network:
 	- <DNS> (différent de la première)
 ```
 Après avoir configuré le fichier, on vient appliquer les modifications via la commande : `sudo netplan apply`
+
 Et pour les deux configurations précédentes, on peut venir vérifier que les modifications ont bien été prise en compte via la commande : `ip a`
 
 ---
