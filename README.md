@@ -14,39 +14,60 @@ Ce projet met en place un environnement de test Dockerisé avec :
 ### 🚀 Déploiement
 
 #### Prérequis
-- Linux (Ubuntu conseillé).
-- Docker et Docker Compose installés :
-  ```bash
-  sudo apt-get update
-  sudo apt upgrade
-  
-  mkdir ~/assessment
-  cd ~/assessment
-  
-  sudo apt-get install ca-certificates curl gnupg
-  sudo install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-  sudo chmod a+r /etc/apt/keyrings/docker.gpg
+- Linux (Ubuntu).
+- Docker et Docker Compose installation :
 
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```bash
+# Mettre à jour la liste des paquets
+sudo apt-get update
 
-  sudo apt-get update
-  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+# Mettre à jour les paquets déjà installés
+sudo apt upgrade -y
 
-  sudo usermod -aG docker $USER
-  newgrp docker
+# Créer le dossier de travail pour le projet
+mkdir ~/assessment
+cd ~/assessment
 
-  sudo systemctl start docker
-  sudo systemctl status docker #Vérification du bon fonctionnement de notre Docker
+# Installer les dépendances nécessaires
+sudo apt-get install -y ca-certificates curl gnupg
 
-  # !! Lors du premier lancement Docker compose on peut retrouver une erreur lié à python pour corriger voici les étapes à suivres :
-  sudo apt install python3-pip
-  sudo apt install python3-setuptools
+# Créer le dossier pour stocker la clé GPG de Docker
+sudo install -m 0755 -d /etc/apt/keyrings
+
+# Télécharger et ajouter la clé GPG officielle de Docker
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# Donner les bons droits à la clé
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Ajouter le dépôt officiel Docker dans les sources
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+$(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Rafraîchir la liste des paquets (incluant Docker)
+sudo apt-get update
+
+# Installer Docker et ses plugins (Docker CLI, Compose, etc.)
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# Ajouter ton utilisateur au groupe Docker (évite d’utiliser sudo à chaque commande)
+sudo usermod -aG docker $USER
+
+# Recharger la session pour appliquer l’ajout au groupe
+newgrp docker
+
+# Démarrer Docker
+sudo systemctl start docker
+
+# Vérifier que Docker tourne correctement
+sudo systemctl status docker
+
+# (Optionnel) Si problème avec Docker Compose → installer Python et Setuptools
+sudo apt install -y python3-pip
+sudo apt install -y python3-setuptools
+```
 
 ### 📂 Arborescence du projet
-
-	'''pgsql
 
 	DockerEShard/
 	├── docker-compose.yml
@@ -62,12 +83,19 @@ Ce projet met en place un environnement de test Dockerisé avec :
 
 ### ▶️ Lancer le service
 
-  '''bash
-  git clone https://github.com/cyrilbaude333/DockerEShard.git
-  cd DockerEShard
+```bash
+# Cloner le dépôt GitHub contenant le projet
+git clone https://github.com/cyrilbaude333/DockerEShard.git
 
-  docker compose build
-  docker compose up -d
+# Entrer dans le dossier du projet
+cd DockerEShard
+
+# Construire l’image Docker
+docker compose build
+
+# Lancer les conteneurs en arrière-plan
+docker compose up -d
+```
 
 Le service est disponible sur :
 
@@ -79,18 +107,47 @@ Le service est disponible sur :
 
 ### 🔐 Sécurité appliquée
 
-✅ Conteneur exécuté en utilisateur non-root (USER 1000).
+- ✅ Conteneur exécuté en **utilisateur non-root** (`USER 1000`).  
+- ✅ Suppression de toutes les **Linux capabilities** (`cap_drop: ALL`).  
+- ✅ Protection `no-new-privileges:true`.  
+- ✅ Persistance des logs via un **volume Docker**.  
 
-✅ Suppression de toutes les Linux capabilities (cap_drop: ALL).
+### 🔥 Configuration du pare-feu (UFW)
 
-✅ Protection no-new-privileges:true.
+Pour sécuriser l’hôte Linux, j’ai utilisé **UFW** (Uncomplicated Firewall).  
+Objectif : autoriser uniquement les services nécessaires (SSH, HTTP sur 8080, DNS, HTTP/HTTPS sortants), et bloquer tout le reste.
 
-✅ Firewall UFW → autorise uniquement :
-SSH (22/tcp)
-HTTP (8080/tcp)
-DNS (53/tcp, 53/udp)
+```bash
+# Réinitialiser le pare-feu
+sudo ufw --force reset
 
-✅ Persistance des logs via un volume Docker.
+# Bloquer tout le trafic entrant par défaut
+sudo ufw default deny incoming
+
+# Autoriser SSH (port 22)
+sudo ufw allow 22/tcp
+
+# Autoriser HTTP sur port 8080 (notre service Docker)
+sudo ufw allow 8080/tcp
+
+# Bloquer tout le trafic sortant par défaut
+sudo ufw default deny outgoing
+
+# Autoriser DNS sortant (TCP et UDP, port 53)
+sudo ufw allow out 53/tcp
+sudo ufw allow out 53/udp
+
+# Autoriser HTTP/HTTPS sortants (ports 80 et 443)
+sudo ufw allow out 80/tcp
+sudo ufw allow out 443/tcp
+
+# Activer UFW
+sudo ufw enable
+
+# Vérifier les règles
+sudo ufw status verbose
+
+```
 
 ### 📊 Monitoring
 
@@ -99,17 +156,20 @@ Script memory_check.sh → vérifie la mémoire toutes les 5 minutes via cron.
 Logs dans /var/log/memory_alert.log.
 
 Exemple :
-  '''yaml
-  2025-09-18 12:20:01 - Memory usage check: 16%
-  2025-09-18 12:25:01 - MEMORY ALERT - used 72% >= 70%
+
+	2025-09-18 12:20:01 - Memory usage check: 16%
+	2025-09-18 12:25:01 - MEMORY ALERT - used 72% >= 70%
 
 ### ⚠️ Vulnérabilités volontaires
 
 Admin Panel exposé : accessible sans authentification via /admin.
-✅ Correction : ajouter une authentification ou restreindre par IP.
+
+- ✅ Correction : ajouter une authentification ou restreindre par IP.
+
 
 Fichier world-writable : vuln.txt monté avec permissions trop larges.
-✅ Correction : restreindre les droits et éviter :rw non nécessaires.
+
+- ✅ Correction : restreindre les droits et éviter :rw non nécessaires.
 
 ### 🧑‍💻 Auteur
 
