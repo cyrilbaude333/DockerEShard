@@ -1,130 +1,117 @@
-📦 DockerEShard — Secure Test Environment
-📌 Description
+# 📦 DockerEShard — Secure Test Environment
 
-Ce projet met en place un environnement de test sécurisé basé sur Docker.
-Il déploie un service web simple (Nginx) avec des mécanismes de sécurité, un monitoring basique et une vulnérabilité volontaire pour l’apprentissage.
+## Docker Secure Test Environment
 
-Objectifs :
+### 📌 Description
+Ce projet met en place un environnement de test Dockerisé avec :
+- Un service web Nginx exposé sur le port **8080**.
+- Des règles de sécurité de base (utilisateur non-root, capacités limitées, firewall restreint).
+- Un monitoring simple de l’utilisation mémoire via un **cron job**.
+- Une vulnérabilité volontaire pour simulation (un **admin panel exposé** + un **fichier world-writable**).
 
-Démontrer la mise en place d’un service web conteneurisé.
+---
 
-Appliquer des bonnes pratiques de sécurité sur Docker et l’hôte.
+### 🚀 Déploiement
 
-Configurer un monitoring simple des ressources.
+#### Prérequis
+- Linux (Ubuntu conseillé).
+- Docker et Docker Compose installés :
+  ```bash
+  sudo apt-get update
+  sudo apt upgrade
+  
+  mkdir ~/assessment
+  cd ~/assessment
+  
+  sudo apt-get install ca-certificates curl gnupg
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-Simuler des vulnérabilités pour entraînement à l’audit.
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-🚀 Déploiement
-🔧 Prérequis
+  sudo apt-get update
+  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-Système : Linux Ubuntu (VM ou serveur).
+  sudo usermod -aG docker $USER
+  newgrp docker
 
-Docker + Docker Compose.
+  sudo systemctl start docker
+  sudo systemctl status docker #Vérification du bon fonctionnement de notre Docker
 
-📥 Installation de Docker
-sudo apt-get update
-sudo apt upgrade -y
+  # !! Lors du premier lancement Docker compose on peut retrouver une erreur lié à python pour corriger voici les étapes à suivres :
+  sudo apt install python3-pip
+  sudo apt install python3-setuptools
 
-# Installer les dépendances
-sudo apt-get install -y ca-certificates curl gnupg lsb-release
+### 📂 Arborescence du projet
 
-# Ajouter la clé GPG officielle Docker
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
+	'''pgsql
 
-# Ajouter le dépôt Docker officiel
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-$(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+	DockerEShard/
+	├── docker-compose.yml
+	├── Dockerfile
+	├── nginx/
+	│   ├── nginx.conf
+	│   ├── default.conf
+	│   └── html/
+	│       ├── index.html
+	│       └── admin/index.html
+	├── memory_check.sh
+	└── README.md
 
-# Installer Docker et plugins
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+### ▶️ Lancer le service
 
-# Ajouter l’utilisateur courant au groupe docker
-sudo usermod -aG docker $USER
-newgrp docker
+  '''bash
+  git clone https://github.com/cyrilbaude333/DockerEShard.git
+  cd DockerEShard
 
-# Vérification
-sudo systemctl start docker
-sudo systemctl status docker
-
-
-⚠️ Si vous rencontrez des erreurs liées à Python avec Docker Compose :
-
-sudo apt install -y python3-pip python3-setuptools
-
-📂 Arborescence du projet
-DockerEShard/
-├── docker-compose.yml
-├── Dockerfile
-├── nginx/
-│   ├── nginx.conf
-│   ├── default.conf
-│   └── html/
-│       ├── index.html
-│       └── admin/index.html
-├── memory_check.sh
-└── README.md
-
-▶️ Lancer le service
-git clone https://github.com/cyrilbaude333/DockerEShard.git
-cd DockerEShard
-
-docker compose build
-docker compose up -d
-
+  docker compose build
+  docker compose up -d
 
 Le service est disponible sur :
 
 🌍 http://localhost:8080
- (page principale)
+ → page principale
 
 ⚠️ http://localhost:8080/admin
- (vulnérabilité volontaire)
+ → vulnérabilité volontaire
 
-🔐 Sécurité appliquée
+### 🔐 Sécurité appliquée
 
 ✅ Conteneur exécuté en utilisateur non-root (USER 1000).
 
 ✅ Suppression de toutes les Linux capabilities (cap_drop: ALL).
 
-✅ Protection no-new-privileges:true activée.
+✅ Protection no-new-privileges:true.
 
-✅ Firewall UFW configuré pour autoriser uniquement :
-
+✅ Firewall UFW → autorise uniquement :
 SSH (22/tcp)
-
 HTTP (8080/tcp)
-
 DNS (53/tcp, 53/udp)
 
-✅ Persistance des logs avec un volume Docker.
+✅ Persistance des logs via un volume Docker.
 
-📊 Monitoring
+### 📊 Monitoring
 
-Script memory_check.sh vérifie la mémoire toutes les 5 minutes (cron).
+Script memory_check.sh → vérifie la mémoire toutes les 5 minutes via cron.
 
-Les alertes sont stockées dans /var/log/memory_alert.log.
+Logs dans /var/log/memory_alert.log.
 
 Exemple :
+  '''yaml
+  2025-09-18 12:20:01 - Memory usage check: 16%
+  2025-09-18 12:25:01 - MEMORY ALERT - used 72% >= 70%
 
-2025-09-18 12:20:01 - Memory usage check: 16%
-2025-09-18 12:25:01 - MEMORY ALERT - used 72% >= 70%
-
-⚠️ Vulnérabilités volontaires
+### ⚠️ Vulnérabilités volontaires
 
 Admin Panel exposé : accessible sans authentification via /admin.
+✅ Correction : ajouter une authentification ou restreindre par IP.
 
-Correction possible : mettre une authentification basique ou restreindre par IP.
+Fichier world-writable : vuln.txt monté avec permissions trop larges.
+✅ Correction : restreindre les droits et éviter :rw non nécessaires.
 
-Fichier world-writable :
+### 🧑‍💻 Auteur
 
-vuln.txt monté avec permissions trop larges.
-
-Correction possible : restreindre les droits et éviter :rw non nécessaires.
-
-🧑‍💻 Auteur
-
-Projet réalisé par Cyril Baudé (@cyrilbaude333
-)
+Projet réalisé par Cyril Baudé
+GitHub : @cyrilbaude333
