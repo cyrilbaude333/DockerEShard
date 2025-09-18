@@ -1,0 +1,19 @@
+#version: "3.8"
+
+services:
+  web:
+    build: .
+    container_name: assessment_web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - web_logs:/var/log/nginx
+      - /opt/vuln/world_writable.txt:/usr/share/nginx/html/vuln.txt:rw
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  web_logs:
